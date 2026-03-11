@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>Orbital Tap</title>
+  <style>
+    html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#050608;color:#fff;font-family:system-ui}
+    #hud{position:fixed;top:10px;left:10px;z-index:2}
+    #overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.6);z-index:3;text-align:center}
+    .btn{background:#1f5;color:#000;padding:10px 16px;border-radius:12px;font-weight:900;cursor:pointer;user-select:none}
+    canvas{display:block;width:100%;height:100%}
+  </style>
+</head>
+<body>
+  <div id="hud">Score: <b id="score">0</b> | Record: <b id="best">0</b></div>
+  <div id="overlay"><div><div style="font-size:24px"><b>Orbital Tap</b></div><div>Click/Tap para cambiar órbita</div><div class="btn" id="startBtn">Iniciar</div></div></div>
+  <canvas id="c"></canvas>
+  <script>
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+    const overlay = document.getElementById('overlay');
+    const startBtn = document.getElementById('startBtn');
+    const scoreEl = document.getElementById('score');
+    const bestEl = document.getElementById('best');
+
+    let W,H; function resize(){W=canvas.width=innerWidth;H=canvas.height=innerHeight} resize(); addEventListener('resize',resize);
+
+    let running=false; let score=0; let best=+localStorage.getItem('ot_best')||0;
+    let angle=0; let speed=2.6; let radius=60; let lane=0;
+    let bullets=[];
+
+    function reset(){score=0; angle=0; speed=2.6; radius=60; lane=0; bullets=[];}
+
+    function spawnBullet(){
+      const side=Math.random()<0.5?0:1; // 0 left, 1 right
+      bullets.push({x: side?W+20:-20, y: H/2 + (Math.random()*200-100), v: side?-1:1});
+    }
+
+    function update(dt){
+      score += dt*10; speed += dt*0.05;
+      angle += dt*speed;
+      if(Math.random()<0.03) spawnBullet();
+      bullets.forEach(b=>b.x += b.v*200*dt);
+      bullets = bullets.filter(b=>b.x>-40 && b.x<W+40);
+
+      // collision
+      const px = W/2 + Math.cos(angle)*(radius + lane*50);
+      const py = H/2 + Math.sin(angle)*(radius + lane*50);
+      for(const b of bullets){
+        if(Math.hypot(px-b.x, py-b.y) < 14){ end(); return; }
+      }
+    }
+
+    function draw(){
+      ctx.fillStyle='#050608'; ctx.fillRect(0,0,W,H);
+      // orbit rings
+      ctx.strokeStyle='#222'; ctx.beginPath(); ctx.arc(W/2,H/2,radius,0,Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(W/2,H/2,radius+50,0,Math.PI*2); ctx.stroke();
+      // player
+      const px = W/2 + Math.cos(angle)*(radius + lane*50);
+      const py = H/2 + Math.sin(angle)*(radius + lane*50);
+      ctx.fillStyle='#7ef'; ctx.beginPath(); ctx.arc(px,py,10,0,Math.PI*2); ctx.fill();
+      // bullets
+      ctx.fillStyle='#f55'; bullets.forEach(b=>{ctx.beginPath(); ctx.arc(b.x,b.y,8,0,Math.PI*2); ctx.fill();});
+
+      scoreEl.textContent = Math.floor(score);
+      bestEl.textContent = best;
+    }
+
+    function end(){
+      running=false; if(score>best){best=Math.floor(score); localStorage.setItem('ot_best',best)}
+      overlay.style.display='flex';
+      overlay.innerHTML = `<div><div style="font-size:24px"><b>Game Over</b></div><div>Score: ${Math.floor(score)}</div><div class='btn' id='restartBtn'>Reiniciar</div></div>`;
+      document.getElementById('restartBtn').onclick = ()=>{overlay.style.display='none'; reset(); running=true;};
+    }
+
+    let last=performance.now();
+    function loop(t){
+      const dt=(t-last)/1000; last=t;
+      if(running) update(dt);
+      draw(); requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+
+    function toggleLane(){ lane = lane?0:1; }
+    canvas.addEventListener('click', e=>{ if(!running){overlay.style.display='none'; reset(); running=true;} else {toggleLane();} });
+    canvas.addEventListener('touchstart', e=>{ if(!running){overlay.style.display='none'; reset(); running=true;} else {toggleLane();} }, {passive:true});
+
+    startBtn.onclick=()=>{overlay.style.display='none'; reset(); running=true;};
+  </script>
+</body>
+</html>
