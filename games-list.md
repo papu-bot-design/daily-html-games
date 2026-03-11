@@ -1,6 +1,7 @@
 # Daily HTML Games - Lista
 
 1. Juego #001 — Meteoro Dodge (publicado)
+3. Juego #003 — Tendencia del día (publicado)
 2. Juego #002 — Orbital Tap (publicado)
 
 ## Ideas próximas (no usados)
